@@ -16,7 +16,7 @@ class FiveAxisKinematics:
         stepper_w = stepper.PrinterStepper(config.getsection('stepper_w'),
                                              units_in_radians=True)
         stepper_u.setup_itersolve('rot_stepper_alloc', b'u')
-        stepper_w.setup_itersolve('rot_stepper_alloc', b'v')
+        stepper_w.setup_itersolve('rot_stepper_alloc', b'w')
         
         # Define these incase used in other processes
         self.dc_module = None
@@ -29,14 +29,18 @@ class FiveAxisKinematics:
         for rail, axis in zip(self.rails, 'xyz'):
             rail.setup_itersolve('cartesian_stepper_alloc', axis.encode())
 
+        # # TODO: Is this needed? Already have PrinterStepper above
+        # self.rot_axes = [stepper.LookupMultiRail(config.getsection('stepper_' + n))
+        #                  for n in 'uw']
+
         # Store all steppers in 1 place
         self.steppers = [stepper_u, stepper_w] + [ s for r in self.rails
                                                   for s in r.get_steppers() ]
 
         # Linear axes limits (X, Y, Z)
         ranges = [r.get_range() for r in self.rails[:3]]
-        self.axes_min = toolhead.Coord(*[r[0] for r in ranges], e=0.)
-        self.axes_max = toolhead.Coord(*[r[1] for r in ranges], e=0.)
+        self.axes_min = toolhead.ToolheadCoord(*[r[0] for r in ranges], e=0.)
+        self.axes_max = toolhead.ToolheadCoord(*[r[1] for r in ranges], e=0.)
 
         # Rotational axes limits (in radians)
         self.rotational_limits = {
@@ -69,15 +73,15 @@ class FiveAxisKinematics:
         self.max_accel = 0.1 # rad/s^2
         self.max_angle = 0.785398 # rad
         
-        # TODO: Integrate this into the config file
-        # Overwrite with values from config file, if used. Otherwise, default to the 2nd input param
-        self.max_accel_u = config.getfloat('max_accel_u', 0.1, above=0., maxval=self.max_accel) # Max rotational accel (rad/s^2)
-        self.max_accel_w = config.getfloat('max_accel_w', 0.1, above=0., maxval=self.max_accel) # Max rotational accel (rad/s^2)
-        self.max_velo_u = config.getfloat('max_velo_u', 0.5, above=0., maxval=self.max_velocity) # Max rotational velo (rad/s)
-        self.max_velo_w = config.getfloat('max_velo_w', 0.5, above=0., maxval=self.max_velocity) # Max rotational velo (rad/s)
-        # TODO: Keep? 
-        self.u_steps_per_rad = config.getfloat('u_steps_per_rad', 10) # Conversion between steps and rad 
-        self.w_steps_per_rad = config.getfloat('w_steps_per_rad', 10) # Conversion between steps and rad
+        # # TODO: Integrate this into the config file
+        # # Overwrite with values from config file, if used. Otherwise, default to the 2nd input param
+        # self.max_accel_u = config.getfloat('max_accel_u', 0.1, above=0., maxval=self.max_accel) # Max rotational accel (rad/s^2)
+        # self.max_accel_w = config.getfloat('max_accel_w', 0.1, above=0., maxval=self.max_accel) # Max rotational accel (rad/s^2)
+        # self.max_velo_u = config.getfloat('max_velo_u', 0.5, above=0., maxval=self.max_velocity) # Max rotational velo (rad/s)
+        # self.max_velo_w = config.getfloat('max_velo_w', 0.5, above=0., maxval=self.max_velocity) # Max rotational velo (rad/s)
+        # # TODO: Keep? 
+        # self.u_steps_per_rad = config.getfloat('u_steps_per_rad', 10) # Conversion between steps and rad 
+        # self.w_steps_per_rad = config.getfloat('w_steps_per_rad', 10) # Conversion between steps and rad
 
     # def get_steppers(self):
     #     """
@@ -213,7 +217,7 @@ class FiveAxisKinematics:
         # Determine movement
         position_min, position_max = stepper.get_range()
         hi = stepper.get_homing_info()
-        homepos = [None, None, None, None, None]  # TODO: Saw this line had 1 extra None in cartesian.py
+        homepos = [None, None, None, None, None, None]  # TODO: Saw this line had 1 extra None in cartesian.py
         homepos[axis] = hi.position_endstop
         forcepos = list(homepos)
 

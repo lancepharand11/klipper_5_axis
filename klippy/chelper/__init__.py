@@ -5,6 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import os, logging
 import cffi
+import platform
 
 
 ######################################################################
@@ -15,13 +16,20 @@ GCC_CMD = "gcc"
 COMPILE_ARGS = ("-Wall -g -O2 -shared -fPIC"
                 " -flto -fwhole-program -fno-use-linker-plugin"
                 " -o %s %s")
-SSE_FLAGS = "-mfpmath=sse -msse2"
+# SSE_FLAGS = "-mfpmath=sse -msse2"
+
+if platform.machine().lower().startswith('x86'):
+    SSE_FLAGS = "-mfpmath=sse -msse2"
+else:
+    SSE_FLAGS = ""
+
+# NOTE: Removed 'kin_cartesian.c', 
 SOURCE_FILES = [
     'pyhelper.c', 'serialqueue.c', 'stepcompress.c', 'itersolve.c', 'trapq.c',
     'pollreactor.c', 'msgblock.c', 'trdispatch.c',
-    'kin_cartesian.c', 'kin_corexy.c', 'kin_corexz.c', 'kin_delta.c',
+    'kin_corexy.c', 'kin_corexz.c', 'kin_delta.c',
     'kin_deltesian.c', 'kin_polar.c', 'kin_rotary_delta.c', 'kin_winch.c',
-    'kin_extruder.c', 'kin_shaper.c', 'kin_idex.c',
+    'kin_extruder.c', 'kin_shaper.c', 'kin_idex.c', 'kin_5_axis.c', 
 ]
 DEST_LIB = "c_helper.so"
 OTHER_FILES = [
@@ -103,9 +111,9 @@ defs_trapq = """
         , double start_time, double end_time);
 """
 
-defs_kin_cartesian = """
-    struct stepper_kinematics *cartesian_stepper_alloc(char axis);
-"""
+# defs_kin_cartesian = """
+#     struct stepper_kinematics *cartesian_stepper_alloc(char axis);
+# """
 
 defs_kin_corexy = """
     struct stepper_kinematics *corexy_stepper_alloc(char type);
@@ -165,6 +173,11 @@ defs_kin_idex = """
     struct stepper_kinematics * dual_carriage_alloc(void);
 """
 
+defs_kin_5_axis = """
+    struct stepper_kinematics *cartesian_stepper_alloc(char axis);
+    struct stepper_kinematics *rot_stepper_alloc(char axis);
+"""
+
 defs_serialqueue = """
     #define MESSAGE_MAX 64
     struct pull_queue_message {
@@ -218,12 +231,14 @@ defs_std = """
     void free(void*);
 """
 
+# NOTE: Removed defs_kin_cartesian, 
 defs_all = [
     defs_pyhelper, defs_serialqueue, defs_std, defs_stepcompress,
     defs_itersolve, defs_trapq, defs_trdispatch,
-    defs_kin_cartesian, defs_kin_corexy, defs_kin_corexz, defs_kin_delta,
+    defs_kin_corexy, defs_kin_corexz, defs_kin_delta,
     defs_kin_deltesian, defs_kin_polar, defs_kin_rotary_delta, defs_kin_winch,
     defs_kin_extruder, defs_kin_shaper, defs_kin_idex,
+    defs_kin_5_axis
 ]
 
 # Update filenames to an absolute path

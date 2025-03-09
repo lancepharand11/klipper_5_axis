@@ -5,6 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import math, logging, importlib
 import mcu, chelper, kinematics.extruder
+from collections import namedtuple
 
 # Common suffixes: _d is distance (in mm), _v is velocity (in
 #   mm/second), _v2 is velocity squared (mm^2/s^2), _t is time (in
@@ -265,7 +266,18 @@ class ToolHead:
         self.step_generators = []
         # Create kinematics class
         gcode = self.printer.lookup_object('gcode')
-        self.Coord = gcode.Coord
+        # self.Coord = gcode.Coord
+
+        # NOTE: Toolhead is only in 3D coords, so can't use gcode.Coord
+        # c = gcode.Coord(1, 2, 3, 4, 5, 6)
+        # fields_to_keep = [f for f in c._fields if f not in ('u', 'w')]
+        # CoordReduced = namedtuple('Coord', fields_to_keep)
+        # c_reduced = CoordReduced(*(getattr(c, f) for f in fields_to_keep))
+        # self.ToolheadCoord = c_reduced
+
+        fields_to_keep = [f for f in gcode.Coord._fields if f not in ('u', 'w')]
+        self.ToolheadCoord = namedtuple('ToolheadCoord', fields_to_keep)
+
         self.extruder = kinematics.extruder.DummyExtruder(self.printer)
         kin_name = config.get('kinematics')
         try:
@@ -574,7 +586,7 @@ class ToolHead:
                      'stalls': self.print_stall,
                      'estimated_print_time': estimated_print_time,
                      'extruder': self.extruder.get_name(),
-                     'position': self.Coord(*self.commanded_pos),
+                     'position': self.ToolheadCoord(*self.commanded_pos),
                      'max_velocity': self.max_velocity,
                      'max_accel': self.max_accel,
                      'minimum_cruise_ratio': self.min_cruise_ratio,
