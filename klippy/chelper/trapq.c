@@ -129,6 +129,8 @@ trapq_add_move(struct trapq *tq, struct move *m)
 }
 
 // Fill and add a move to the trapezoid velocity queue
+static const double lin_to_rot_velo_scaling = 1.0;
+static const double lin_to_rot_accel_scaling = 1.0;
 void __visible
 trapq_append(struct trapq *tq, double print_time,
              double accel_t, double cruise_t, double decel_t,
@@ -136,12 +138,10 @@ trapq_append(struct trapq *tq, double print_time,
              double start_pos_u, double start_pos_w,
              double axes_r_x, double axes_r_y, double axes_r_z,
              double axes_r_u, double axes_r_w,
-             double start_v, double cruise_v, double accel,
-             double start_rot_v, double rot_cruise_v, double rot_accel)
+             double start_v, double cruise_v, double accel)
 {
-    // If needed, you could add separate rotational parameters
-    // like start_rot_v, rot_cruise, rot_accel. For now, we set them
-    // to zero or use the same as linear if you want them to match.
+    // Add separate rotational parameters like start_rot_v, rot_cruise, rot_accel. 
+    // For now, set them to zero
 
     struct coord start_pos = {
         .x = start_pos_x, .y = start_pos_y, .z = start_pos_z,
@@ -161,8 +161,8 @@ trapq_append(struct trapq *tq, double print_time,
         m->start_v = start_v;
         m->half_accel = 0.5 * accel;
         // Rotational
-        m->start_rot_v = start_rot_v;
-        m->half_rot_accel = 0.5 * rot_accel;
+        m->start_rot_v = start_v * lin_to_rot_velo_scaling;  // apply scaling factor to linear velo and convert to rot
+        m->half_rot_accel = 0.5 * accel * lin_to_rot_accel_scaling;  // apply scaling factor to linear velo and convert to rot
 
         m->start_pos = start_pos;
         m->axes_r = axes_r;
@@ -182,7 +182,7 @@ trapq_append(struct trapq *tq, double print_time,
         m->start_v = cruise_v;
         m->half_accel = 0.;
         // Rotational
-        m->start_rot_v = rot_cruise_v;
+        m->start_rot_v = cruise_v * lin_to_rot_velo_scaling;  // apply scaling factor to linear velo and convert to rot
         m->half_rot_accel = 0.;
 
         m->start_pos = start_pos;
@@ -202,8 +202,8 @@ trapq_append(struct trapq *tq, double print_time,
         m->start_v = cruise_v;
         m->half_accel = -0.5 * accel;
         // Rotational
-        m->start_rot_v = rot_cruise_v;
-        m->half_rot_accel = -0.5 * rot_accel;
+        m->start_rot_v = cruise_v * lin_to_rot_velo_scaling;  // apply scaling factor to linear velo and convert to rot
+        m->half_rot_accel = -0.5 * accel * lin_to_rot_accel_scaling;  // apply scaling factor to linear velo and convert to rot
 
         m->start_pos = start_pos;
         m->axes_r = axes_r;

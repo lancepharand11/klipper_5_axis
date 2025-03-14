@@ -68,8 +68,7 @@ void trapq_append(struct trapq *tq, double print_time,
                   double start_pos_u, double start_pos_w,  // For U/W
                   double axes_r_x, double axes_r_y, double axes_r_z,
                   double axes_r_u, double axes_r_w,  // For U/W
-                  double start_v, double cruise_v, double accel,
-                  double start_rot_v, double rot_cruise_v, double rot_accel);  // For U/W
+                  double start_v, double cruise_v, double accel);  // For U/W
 
 void trapq_finalize_moves(struct trapq *tq, double print_time,
                           double clear_history_time);

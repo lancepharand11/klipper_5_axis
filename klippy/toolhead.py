@@ -22,14 +22,14 @@ class Move:
         self.timing_callbacks = []
         velocity = min(speed, toolhead.max_velocity)
         self.is_kinematic_move = True
-        self.axes_d = axes_d = [end_pos[i] - start_pos[i] for i in (0, 1, 2, 3)]
-        self.move_d = move_d = math.sqrt(sum([d*d for d in axes_d[:3]]))
+        self.axes_d = axes_d = [end_pos[i] - start_pos[i] for i in (0, 1, 2, 3, 4, 5)]
+        self.move_d = move_d = math.sqrt(sum([d*d for d in axes_d[:5]]))
         if move_d < .000000001:
             # Extrude only move
-            self.end_pos = (start_pos[0], start_pos[1], start_pos[2],
+            self.end_pos = (start_pos[0], start_pos[1], start_pos[2], start_pos[3], start_pos[4],
                             end_pos[3])
-            axes_d[0] = axes_d[1] = axes_d[2] = 0.
-            self.move_d = move_d = abs(axes_d[3])
+            axes_d[0] = axes_d[1] = axes_d[2] = axes_d[3] = axes_d[4] = 0.
+            self.move_d = move_d = abs(axes_d[5])
             inv_move_d = 0.
             if move_d:
                 inv_move_d = 1. / move_d
@@ -61,7 +61,7 @@ class Move:
         self.next_junction_v2 = min(self.next_junction_v2, speed**2)
     def move_error(self, msg="Move out of range"):
         ep = self.end_pos
-        m = "%s: %.3f %.3f %.3f [%.3f]" % (msg, ep[0], ep[1], ep[2], ep[3])
+        m = "%s: %.3f %.3f %.3f %.3f %.3f [%.3f]" % (msg, ep[0], ep[1], ep[2], ep[3], ep[4], ep[5])
         return self.toolhead.printer.command_error(m)
     def calc_junction(self, prev_move):
         if not self.is_kinematic_move or not prev_move.is_kinematic_move:
@@ -76,7 +76,9 @@ class Move:
         prev_axes_r = prev_move.axes_r
         junction_cos_theta = -(axes_r[0] * prev_axes_r[0]
                                + axes_r[1] * prev_axes_r[1]
-                               + axes_r[2] * prev_axes_r[2])
+                               + axes_r[2] * prev_axes_r[2]
+                               + axes_r[3] * prev_axes_r[3]
+                               + axes_r[4] * prev_axes_r[4])
         sin_theta_d2 = math.sqrt(max(0.5*(1.0-junction_cos_theta), 0.))
         cos_theta_d2 = math.sqrt(max(0.5*(1.0+junction_cos_theta), 0.))
         one_minus_sin_theta_d2 = 1. - sin_theta_d2
@@ -218,7 +220,7 @@ class ToolHead:
         self.mcu = self.all_mcus[0]
         self.lookahead = LookAheadQueue(self)
         self.lookahead.set_flush_time(BUFFER_TIME_HIGH)
-        self.commanded_pos = [0., 0., 0., 0.]
+        self.commanded_pos = [0., 0., 0., 0., 0., 0.]
         # Velocity and acceleration control
         self.max_velocity = config.getfloat('max_velocity', above=0.)
         self.max_accel = config.getfloat('max_accel', above=0.)
@@ -266,17 +268,19 @@ class ToolHead:
         self.step_generators = []
         # Create kinematics class
         gcode = self.printer.lookup_object('gcode')
-        # self.Coord = gcode.Coord
+        self.Coord = gcode.Coord
 
+        # 
+        # OLD
+        #
         # NOTE: Toolhead is only in 3D coords, so can't use gcode.Coord
         # c = gcode.Coord(1, 2, 3, 4, 5, 6)
         # fields_to_keep = [f for f in c._fields if f not in ('u', 'w')]
         # CoordReduced = namedtuple('Coord', fields_to_keep)
         # c_reduced = CoordReduced(*(getattr(c, f) for f in fields_to_keep))
         # self.ToolheadCoord = c_reduced
-
-        fields_to_keep = [f for f in gcode.Coord._fields if f not in ('u', 'w')]
-        self.ToolheadCoord = namedtuple('ToolheadCoord', fields_to_keep)
+        # fields_to_keep = [f for f in gcode.Coord._fields if f not in ('u', 'w')]
+        # self.ToolheadCoord = namedtuple('ToolheadCoord', fields_to_keep)
 
         self.extruder = kinematics.extruder.DummyExtruder(self.printer)
         kin_name = config.get('kinematics')
@@ -362,9 +366,12 @@ class ToolHead:
                     self.trapq, next_move_time,
                     move.accel_t, move.cruise_t, move.decel_t,
                     move.start_pos[0], move.start_pos[1], move.start_pos[2],
+                    move.start_pos[3], move.start_pos[4], 
                     move.axes_r[0], move.axes_r[1], move.axes_r[2],
+                    move.axes_r[3], move.axes_r[4],
                     move.start_v, move.cruise_v, move.accel)
-            if move.axes_d[3]:
+
+            if move.axes_d[5]:
                 self.extruder.move(next_move_time, move)
             next_move_time = (next_move_time + move.accel_t
                               + move.cruise_t + move.decel_t)
@@ -473,7 +480,8 @@ class ToolHead:
         self.flush_step_generation()
         ffi_main, ffi_lib = chelper.get_ffi()
         ffi_lib.trapq_set_position(self.trapq, self.print_time,
-                                   newpos[0], newpos[1], newpos[2])
+                                   newpos[0], newpos[1], newpos[2], 
+                                   newpos[3], newpos[4])
         self.commanded_pos[:] = newpos
         self.kin.set_position(newpos, homing_axes)
         self.printer.send_event("toolhead:set_position")
@@ -487,7 +495,7 @@ class ToolHead:
             return
         if move.is_kinematic_move:
             self.kin.check_move(move)
-        if move.axes_d[3]:
+        if move.axes_d[5]:
             self.extruder.check_move(move)
         self.commanded_pos[:] = move.end_pos
         self.lookahead.add_move(move)
@@ -514,7 +522,7 @@ class ToolHead:
             eventtime = self.reactor.pause(eventtime + 0.100)
     def set_extruder(self, extruder, extrude_pos):
         self.extruder = extruder
-        self.commanded_pos[3] = extrude_pos
+        self.commanded_pos[5] = extrude_pos
     def get_extruder(self):
         return self.extruder
     # Homing "drip move" handling

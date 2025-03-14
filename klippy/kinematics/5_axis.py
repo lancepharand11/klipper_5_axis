@@ -37,10 +37,19 @@ class FiveAxisKinematics:
         self.steppers = [stepper_u, stepper_w] + [ s for r in self.rails
                                                   for s in r.get_steppers() ]
 
-        # Linear axes limits (X, Y, Z)
+        # # Linear axes limits (X, Y, Z)
+        # ranges = [r.get_range() for r in self.rails[:3]]
+        # # self.axes_min = toolhead.ToolheadCoord(*[r[0] for r in ranges], e=0.)
+        # # self.axes_max = toolhead.ToolheadCoord(*[r[1] for r in ranges], e=0.)
+        # self.axes_min = toolhead.Coord(*[r[0] for r in ranges], e=0.)
+        # self.axes_max = toolhead.Coord(*[r[1] for r in ranges], e=0.)
+
         ranges = [r.get_range() for r in self.rails[:3]]
-        self.axes_min = toolhead.ToolheadCoord(*[r[0] for r in ranges], e=0.)
-        self.axes_max = toolhead.ToolheadCoord(*[r[1] for r in ranges], e=0.)
+        # u and w move check is handled in the class 
+        axes_min = [r[0] for r in ranges] + [0, 0]
+        axes_max = [r[1] for r in ranges] + [0, 0] 
+        self.axes_min = toolhead.Coord(*axes_min, e=0.)
+        self.axes_max = toolhead.Coord(*axes_max, e=0.)
 
         # Rotational axes limits (in radians)
         self.rotational_limits = {
@@ -135,7 +144,8 @@ class FiveAxisKinematics:
         # Updated coordinates relative to the rotated coordinate frame
         x_rot, y_rot, z_rot = transformed_position
 
-        return [x_rot, y_rot, z_rot]
+        # TODO: May not be able to return 0 for u and w
+        return [x_rot, y_rot, z_rot, 0, 0]
     
     # NOTE: Not used anywhere
     def update_limits(self, i, range):
